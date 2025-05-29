@@ -68,6 +68,32 @@ const elements = {
   toastContainer: document.getElementById('toast-container')
 };
 
+
+
+function loadUserProfileFromSession() {
+  try {
+    const savedUserProfile = sessionStorage.getItem('userProfile');
+    if (savedUserProfile) {
+      const userProfile = JSON.parse(savedUserProfile);
+     
+      // Update state with actual user data from Supabase
+      // Using the column names from the candidates table
+      state.userProfile = {
+        fullName: userProfile.full_name,
+        email: userProfile.email,
+        program: userProfile.cohort,
+        profileImage: state.userProfile.profileImage // Keep existing profile image if any
+      };
+     
+      console.log("Loaded user profile:", state.userProfile);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error loading user profile from session:", error);
+    return false;
+  }
+}
 // Time Management
 function updateCurrentTime() {
   const now = new Date();

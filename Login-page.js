@@ -1,59 +1,32 @@
-        // Global variables
-        let html5QrCode = null;
+// ✅ 1. Supabase Client Setup
+const SUPABASE_URL = 'https://kpngseysyicyhsezucsz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtwbmdzZXlzeWljeWhzZXp1Y3N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0MzAwNzYsImV4cCI6MjA2NDAwNjA3Nn0.WxIXf3I67IYtihZOoXSo_flmxCC5HKnLImIFayfjHf0';
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // DOM Elements - Desktop
-        const desktopLoginForm = document.getElementById('desktop-login-form');
-        const desktopLoginButton = document.getElementById('desktop-login-button');
-        const desktopSpinner = document.getElementById('desktop-spinner');
-        const desktopButtonText = document.getElementById('desktop-button-text');
+// ✅ 2. Toast Notification
+function createToast({ title, description, variant = 'success' }) {
+    const toast = document.createElement('div');
+    toast.className = `toast-container ${variant === 'destructive' ? 'toast-error' : 'toast-success'}`;
+    toast.innerHTML = `
+        <div class="toast-title">${title}</div>
+        <div class="toast-description">${description}</div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
 
-        // DOM Elements - Mobile
-        const mobileButtons = document.getElementById('mobile-buttons');
-        const mobileLoginButton = document.getElementById('mobile-login-button');
-        const mobileScanButton = document.getElementById('mobile-scan-button');
-        const mobileLoginForm = document.getElementById('mobile-login-form');
-        const backFromLoginButton = document.getElementById('back-from-login');
-        const mobileLoginFormElement = document.getElementById('mobile-login-form-element');
-        const mobileSubmitButton = document.getElementById('mobile-submit-button');
-        const mobileSpinner = document.getElementById('mobile-spinner');
-        const mobileButtonText = document.getElementById('mobile-button-text');
+// ✅ 3. Enhanced Login Handler with Debugging
+async function handleLogin(email, password, button, spinner, buttonText) {
+    // Debug: Log the inputs (remove in production)
+    console.log('Login attempt:', { 
+        email: email, 
+        emailLength: email?.length,
+        passwordLength: password?.length,
+        emailTrimmed: email?.trim(),
+        hasPassword: !!password 
+    });
 
-        // DOM Elements - Scan
-        const scanScreen = document.getElementById('scan-screen');
-        const backFromScanButton = document.getElementById('back-from-scan');
-        const qrReader = document.getElementById('qr-reader');
-        const scanButton = document.getElementById('scan-button');
-
-        // Toast notification system
-        const createToast = ({ title, description, variant = 'success' }) => {
-            // Create toast container
-            const toastContainer = document.createElement('div');
-            toastContainer.className = `toast-container ${variant === 'destructive' ? 'toast-error' : 'toast-success'}`;
-            
-            // Create toast content
-            toastContainer.innerHTML = `
-                <div class="toast-title">${title}</div>
-                <div class="toast-description">${description}</div>
-            `;
-            
-            // Add to document
-            document.body.appendChild(toastContainer);
-            
-            // Remove toast after 3 seconds
-            setTimeout(() => {
-                if (document.body.contains(toastContainer)) {
-                    document.body.removeChild(toastContainer);
-                }
-            }, 3000);
-        };
-
-        // Desktop login form handler
-       desktopLoginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const email = e.target.elements.email.value;
-    const password = e.target.elements.password.value;
-    
+    // Validate inputs
     if (!email || !password) {
         createToast({
             title: "Error",
@@ -62,241 +35,195 @@
         });
         return;
     }
-    
-    // Show loading state
-    desktopLoginButton.disabled = true;
-    desktopSpinner.style.display = 'inline-block';
-    desktopButtonText.textContent = 'Logging in...';
-    
-    // Simulate API call delay
-    setTimeout(() => {
-        // Reset loading state
-        desktopLoginButton.disabled = false;
-        desktopSpinner.style.display = 'none';
-        desktopButtonText.textContent = 'Login';
-        
-        // Check if admin credentials
-        if (email === 'admin@capaciti.org.za' && password === 'Password') {
-            createToast({
-                title: "Admin Login Success",
-                description: "Welcome Admin! Redirecting to dashboard..."
-            });
-            // Redirect to admin dashboard
-            setTimeout(() => {
-                window.location.href = "AdminDashboard.html";
-            }, 1500);
-        } else {
-            createToast({
-                title: "Login Success",
-                description: "Welcome! Redirecting to face capture..."
-            });
-            // Redirect to facial capture
-            setTimeout(() => {
-                window.location.href = "facial-capture.html";
-            }, 1500);
-        }
-    }, 1000);
-});
 
-        // Mobile login button handler
-        mobileLoginButton.addEventListener('click', () => {
-            mobileLoginForm.style.display = 'block';
-            mobileButtons.style.display = 'none';
-        });
+    // Trim whitespace and validate email format
+    email = email.trim().toLowerCase();
+    password = password.trim();
 
-        // Mobile scan button handler
-        mobileScanButton.addEventListener('click', () => {
-            scanScreen.style.display = 'block';
-            mobileButtons.style.display = 'none';
-            
-            // Small delay to ensure DOM is ready
-            setTimeout(() => {
-                startQrScanner();
-            }, 100);
-        });
-
-        // Back button from login handler
-        backFromLoginButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            mobileLoginForm.style.display = 'none';
-            mobileButtons.style.display = 'flex';
-        });
-
-        // Back button from scan handler
-        backFromScanButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode = null;
-                    scanScreen.style.display = 'none';
-                    mobileButtons.style.display = 'flex';
-                }).catch(() => {
-                    scanScreen.style.display = 'none';
-                    mobileButtons.style.display = 'flex';
-                });
-            } else {
-                scanScreen.style.display = 'none';
-                mobileButtons.style.display = 'flex';
-            }
-        });
-
-        // Mobile login form handler
-        mobileLoginFormElement.addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const email = e.target.elements.mobileEmail.value;
-    const password = e.target.elements.mobilePassword.value;
-    
-    if (!email || !password) {
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
         createToast({
             title: "Error",
-            description: "Please enter both email and password",
+            description: "Please enter a valid email address",
             variant: "destructive"
         });
         return;
     }
-    
-    // Show loading state
-    mobileSubmitButton.disabled = true;
-    mobileSpinner.style.display = 'inline-block';
-    mobileButtonText.textContent = 'Logging in...';
-    
-    // Simulate API call delay
-    setTimeout(() => {
-        // Reset loading state
-        mobileSubmitButton.disabled = false;
-        mobileSpinner.style.display = 'none';
-        mobileButtonText.textContent = 'Login';
-        
-        // Check if admin credentials
-        if (email === 'admin@capaciti.org.za' && password === 'Password') {
-            createToast({
-                title: "Admin Login Success",
-                description: "Welcome Admin! Redirecting to dashboard..."
-            });
-            // Redirect to admin dashboard
-            setTimeout(() => {
-                window.location.href = "AdminDashboard.html";
-            }, 1500);
-        } else {
-            createToast({
-                title: "Login Success",
-                description: "Welcome! Redirecting to face capture..."
-            });
-            // Redirect to facial capture
-            setTimeout(() => {
-                window.location.href = "facial-capture.html";
-            }, 1500);
-        }
-    }, 1000);
-});
 
-        // QR Scanner functionality
-        function startQrScanner() {
-            if (!Html5Qrcode || !qrReader) return;
-            
-            Html5Qrcode.getCameras().then(devices => {
-                if (devices && devices.length) {
-                    const cameraId = devices[0].id;
-                    html5QrCode = new Html5Qrcode("qr-reader");
-                    html5QrCode.start(
-                        cameraId,
-                        {
-                            fps: 10,
-                            qrbox: 200
-                        },
-                        qrCodeMessage => {
-                            createToast({
-                                title: "QR Code Detected",
-                                description: `Code: ${qrCodeMessage}`
-                            });
-                            
-                            if (html5QrCode) {
-                                html5QrCode.stop().then(() => {
-                                    html5QrCode = null;
-                                    scanScreen.style.display = 'none';
-                                    mobileButtons.style.display = 'flex';
-                                });
-                            }
-                        },
-                        errorMessage => {
-                            // You can log scanning errors here if needed
-                            console.error("QR scanning error:", errorMessage);
-                        }
-                    ).catch(err => {
-                        console.error("QR code scanner error:", err);
-                    });
-                }
-            }).catch(err => {
-                console.error("Camera initialization failed: ", err);
-                createToast({
-                    title: "Camera Error",
-                    description: "Failed to initialize camera",
-                    variant: "destructive"
-                });
-            });
-        }
+    if (password.length < 6) {
+        createToast({
+            title: "Error",
+            description: "Password must be at least 6 characters",
+            variant: "destructive"
+        });
+        return;
+    }
 
-        // Scan button click handler
-        scanButton.addEventListener('click', () => {
-            // This could be used to restart scanning if needed
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    startQrScanner();
-                });
-            } else {
-                startQrScanner();
-            }
+    button.disabled = true;
+    spinner.style.display = 'inline-block';
+    buttonText.textContent = 'Logging in...';
+
+    try {
+        console.log('Attempting login with:', { email }); // Debug log
+
+        const { data: authData, error: authError } = await client.auth.signInWithPassword({ 
+            email: email, 
+            password: password 
         });
 
-        // Mobile login form handler (for the form itself)
-       function handleMobileLogin(e) {
+        console.log('Auth response:', { authData, authError }); // Debug log
+
+        if (authError) {
+            console.error('Authentication error details:', {
+                message: authError.message,
+                status: authError.status,
+                code: authError.code
+            });
+            throw authError;
+        }
+
+        if (!authData.user) {
+            throw new Error('No user data returned from authentication');
+        }
+
+        const user = authData.user;
+        console.log('Authenticated user:', { id: user.id, email: user.email }); // Debug log
+
+        // ✅ Match user_id from Supabase Auth with users table
+        const { data: profile, error: profileError } = await client
+            .from('users')
+            .select('role')
+            .eq('user_id', user.id)
+            .single();
+
+        console.log('Profile lookup:', { profile, profileError }); // Debug log
+
+        if (profileError) {
+            console.error('Profile error:', profileError);
+            // Check if it's a "no rows returned" error
+            if (profileError.code === 'PGRST116') {
+                throw new Error('User profile not found. Please contact support.');
+            }
+            throw new Error(`Profile lookup failed: ${profileError.message}`);
+        }
+
+        if (!profile?.role) {
+            throw new Error('User role not found in profile');
+        }
+
+        const role = profile.role.toLowerCase();
+        console.log('User role:', role);
+
+        createToast({
+            title: "Login Successful",
+            description: `Redirecting as ${role}`
+        });
+
+        setTimeout(() => {
+            if (role === 'admin') {
+                window.location.href = 'AdminDashboard.html';
+            } else {
+                window.location.href = 'facial-capture.html';
+            }
+        }, 1500);
+
+    } catch (err) {
+        console.error('Login error details:', {
+            message: err.message,
+            status: err.status,
+            code: err.code,
+            fullError: err
+        });
+
+        let errorMessage = err.message;
+        
+        // Provide more specific error messages
+        if (err.message === 'Invalid login credentials') {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (err.status === 400) {
+            errorMessage = 'Authentication failed. Please verify your email and password.';
+        } else if (err.message.includes('Email rate limit exceeded')) {
+            errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+        }
+
+        createToast({
+            title: "Login Failed",
+            description: errorMessage,
+            variant: "destructive"
+        });
+    } finally {
+        button.disabled = false;
+        spinner.style.display = 'none';
+        buttonText.textContent = 'Login';
+    }
+}
+
+// ✅ 4. Test Connection Function (add this for debugging)
+async function testSupabaseConnection() {
+    try {
+        console.log('Testing Supabase connection...');
+        const { data, error } = await client.auth.getSession();
+        console.log('Connection test result:', { data, error });
+        
+        if (error) {
+            console.error('Connection test failed:', error);
+            return false;
+        }
+        
+        console.log('Supabase connection successful');
+        return true;
+    } catch (err) {
+        console.error('Connection test error:', err);
+        return false;
+    }
+}
+
+// Test connection when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    testSupabaseConnection();
+});
+
+// ✅ 5. Desktop Login Form
+document.getElementById('desktop-login-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    console.log('Desktop form submission:', { 
+        hasEmail: !!email, 
+        hasPassword: !!password,
+        emailValue: email // Remove this in production
+    });
+    
+    handleLogin(
+        email,
+        password,
+        document.getElementById('desktop-login-button'),
+        document.getElementById('desktop-spinner'),
+        document.getElementById('desktop-button-text')
+    );
+});
+
+// ✅ 6. Mobile Login Form
+document.getElementById('mobile-login-form-element')?.addEventListener('submit', (e) => {
     e.preventDefault();
     
     const email = document.getElementById('mobileEmail').value;
     const password = document.getElementById('mobilePassword').value;
     
-    if (!email || !password) {
-        createToast({
-            title: "Error",
-            description: "Please enter both email and password",
-            variant: "destructive"
-        });
-        return;
-    }
+    console.log('Mobile form submission:', { 
+        hasEmail: !!email, 
+        hasPassword: !!password,
+        emailValue: email // Remove this in production
+    });
     
-    // Show loading state
-    mobileSubmitButton.disabled = true;
-    mobileSpinner.style.display = 'inline-block';
-    mobileButtonText.textContent = 'Logging in...';
-    
-    // Simulate API call delay
-    setTimeout(() => {
-        // Reset loading state
-        mobileSubmitButton.disabled = false;
-        mobileSpinner.style.display = 'none';
-        mobileButtonText.textContent = 'Login';
-        
-        // Check if admin credentials
-        if (email === 'admin@gmail.com' && password === 'password') {
-            createToast({
-                title: "Admin Login Success",
-                description: "Welcome Admin! Redirecting to dashboard..."
-            });
-            // Redirect to admin dashboard
-            setTimeout(() => {
-                window.location.href = "AdminDashboard.html";
-            }, 1500);
-        } else {
-            createToast({
-                title: "Login Success",
-                description: "Welcome! Redirecting to face capture..."
-            });
-            // Redirect to facial capture
-            setTimeout(() => {
-                window.location.href = "facial-capture.html";
-            }, 1500);
-        }
-    }, 1000);
-}
+    handleLogin(
+        email,
+        password,
+        document.getElementById('mobile-submit-button'),
+        document.getElementById('mobile-spinner'),
+        document.getElementById('mobile-button-text')
+    );
+});
